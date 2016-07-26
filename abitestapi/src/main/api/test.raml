@@ -1,0 +1,45 @@
+#%RAML 0.8
+baseUri: https://testraml.mulesoft.com/
+title: Abi-Test-API
+version: 1.0
+#baseUri:http://server/api/
+
+/queryArtistTrack:
+  description: artist and track info
+  post:
+    description: artist name and track to query
+    body:
+      application/json:
+        example: |
+          {
+           "artist": "Cher", 
+           "track": "believe"
+          }
+    responses:
+      200:
+        body:
+          application/json: 
+        description: returns details about specific track of an artist
+/popularMovie:
+  description: movie data
+  get:
+    description: query 10 popular movies
+    responses:
+      200:
+        body:
+          application/json: 
+        description: returns 10 most popular movies
+/valueVariation:
+  post:
+    description: calculate currency variation
+    body:
+      application/json:
+        example: |
+          {
+           "start-date": "2016-07-01", 
+           "end-date": "2016-07-21"
+          }
+    responses:
+      200:
+        body:
+          application/json:

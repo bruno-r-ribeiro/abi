@@ -1,0 +1,8 @@
+- Popular movies request url example
+http://localhost:8081/api/popularMovies
+
+- Query artist and track request url example
+http://localhost:8081/api/queryArtistTrack
+
+- Calculate value variation
+http://localhost:8081/api/valueVariation

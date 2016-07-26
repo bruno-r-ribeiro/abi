@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd">
+    <http:listener-config name="test-httpListenerConfig" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    
+    <http:request-config name="HTTP_Request_Config_Api_Layer" host="apilayer.net" port="${apilayer.port}" basePath="/api" doc:name="HTTP Request Configuration"/>
+    <http:request-config name="HTTP_Request_Config_Movies_DB" host="api.themoviedb.org" port="${themoviedb.port}" basePath="/3" doc:name="HTTP Request Configuration"/>
+    <http:request-config name="HTTP_Request_Config_Last_FM" host="ws.audioscrobbler.com" port="${lastfm.port}" basePath="/2.0" doc:name="HTTP Request Configuration"/>
+    
+    <apikit:config name="test-config" raml="test.raml" consoleEnabled="true" consolePath="console" doc:name="Router"/>
+    
+    <flow name="test-main">
+        <http:listener config-ref="test-httpListenerConfig" path="/api/*" doc:name="HTTP"/>
+        <apikit:router config-ref="test-config" doc:name="APIkit Router"/>
+        <exception-strategy ref="test-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy"/>
+    </flow>
+    
+    <flow name="get:/popularMovie:test-config">
+
+        <http:request config-ref="HTTP_Request_Config_Movies_DB" path="movie/popular" method="GET" doc:name="HTTP">
+            <http:request-builder>
+                <http:query-param paramName="api_key" value="${themoviedb.access_key}"/>
+                <http:query-param paramName="page" value="1"/>
+
+
+            </http:request-builder>
+        </http:request>
+        <set-payload value="#[json:results]" mimeType="application/json" doc:name="Set Payload"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload map {
+	title: $.title,
+	original_language: $.original_language,
+	release_date: $.release_date,
+	poster_path: $.poster_path
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	popularMovies: payload[0..9]
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="== Response: #[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Response"/>
+        <exception-strategy ref="abitestCatch_Exception_Strategy" doc:name="Reference Exception Strategy"/>
+    </flow>
+    
+    <flow name="post:/queryArtistTrack:test-config">
+
+        <choice doc:name="Choice">
+            <when expression="track != null" evaluator="json">
+                <http:request config-ref="HTTP_Request_Config_Last_FM" path="/" method="GET" doc:name="HTTP">
+                    <http:request-builder>
+                        <http:query-param paramName="method" value="track.getInfo"/>
+                        <http:query-param paramName="api_key" value="${lastfm.access_key}"/>
+                        <http:query-param paramName="artist" value="#[json:artist]"/>
+                        <http:query-param paramName="track" value="#[json:track]"/>
+                        <http:query-param paramName="format" value="json"/>
+                    </http:request-builder>
+                </http:request>
+            </when>
+            <otherwise>
+                <logger message="Track not informed" level="INFO" doc:name="Logger"/>
+                <http:request config-ref="HTTP_Request_Config_Last_FM" path="/" method="GET" doc:name="HTTP">
+                    <http:request-builder>
+                        <http:query-param paramName="method" value="artist.getinfo"/>
+                        <http:query-param paramName="artist" value="#[json:artist]"/>
+                        <http:query-param paramName="api_key" value="${lastfm.access_key}"/>
+                        <http:query-param paramName="format" value="json"/>
+                    </http:request-builder>
+                </http:request>
+            </otherwise>
+        </choice>
+        <logger message="== Response: #[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Response"/>
+        <exception-strategy ref="abitestCatch_Exception_Strategy" doc:name="Reference Exception Strategy"/>
+    </flow>
+    <flow name="post:/valueVariation:test-config">
+
+        <logger message="== Request: #[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Request"/>
+        <enricher source="#[json:quotes/USDEUR]" target="#[flowVars.startValue]" doc:name="Message Enricher">
+            <http:request config-ref="HTTP_Request_Config_Api_Layer" path="/historical" method="GET" doc:name="Get Start Variation">
+                <http:request-builder>
+                    <http:query-param paramName="access_key" value="${apilayer.access_key}"/>
+                    <http:query-param paramName="date" value="#[json:start-date]"/>
+                    <http:query-param paramName="source" value="${apilayer.currency.dollar}"/>
+                    <http:query-param paramName="format" value="1"/>
+                    <http:query-param paramName="currencies" value="${apilayer.currency.euro}"/>
+
+                </http:request-builder>
+            </http:request>
+        </enricher>
+        <enricher source="#[json:quotes/USDEUR]" target="#[flowVars.endValue]" doc:name="Message Enricher">
+            <http:request config-ref="HTTP_Request_Config_Api_Layer" path="/historical" method="GET" doc:name="Get End Variation">
+                <http:request-builder>
+                    <http:query-param paramName="access_key" value="${apilayer.access_key}"/>
+                    <http:query-param paramName="date" value="#[json:end-date]"/>
+                    <http:query-param paramName="source" value="${apilayer.currency.dollar}"/>
+                    <http:query-param paramName="format" value="1"/>
+                    <http:query-param paramName="currencies" value="${apilayer.currency.euro}"/>
+                </http:request-builder>
+            </http:request>
+        </enricher>
+        <dw:transform-message doc:name="Define Variation">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	"valueVariation":((flowVars.endValue - flowVars.startValue)*100)/flowVars.startValue
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="== Response: #[message.payloadAs(java.lang.String)] == #[flowVars.startValue] =#= #[flowVars.endValue]" level="INFO" doc:name="Response"/>
+        <exception-strategy ref="abitestCatch_Exception_Strategy" doc:name="Reference Exception Strategy"/>
+    </flow>
+    
+    <catch-exception-strategy name="abitestCatch_Exception_Strategy">
+        <logger message="Error while processing operation: #[exception]" level="INFO" doc:name="Logger"/>
+        <set-payload value="{&quot;message&quot;:&quot;#[exception.getMessage()]&quot;}" mimeType="application/json" metadata:id="d18862f2-30d8-427b-aa99-8f203e7a4f05" doc:name="Set Payload"/>
+
+    </catch-exception-strategy>
+    
+  
+    
+    <apikit:mapping-exception-strategy name="test-apiKitGlobalExceptionMapping">
+        <apikit:mapping statusCode="404">
+            <apikit:exception value="org.mule.module.apikit.exception.NotFoundException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Resource not found&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="405">
+            <apikit:exception value="org.mule.module.apikit.exception.MethodNotAllowedException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Method not allowed&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="415">
+            <apikit:exception value="org.mule.module.apikit.exception.UnsupportedMediaTypeException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Unsupported media type&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="406">
+            <apikit:exception value="org.mule.module.apikit.exception.NotAcceptableException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Not acceptable&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="400">
+            <apikit:exception value="org.mule.module.apikit.exception.BadRequestException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Bad request&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+    </apikit:mapping-exception-strategy>
+</mule>
