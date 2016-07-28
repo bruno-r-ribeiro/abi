@@ -4,17 +4,17 @@ title: Abi-Test-API
 version: 1.0
 #baseUri:http://server/api/
 
+schemas:
+  - queryArtistTrackRequest: !include json/schema/queryArtistTrackRequest.json
+  - valueVariationRequest: !include json/schema/valueVariationRequest.json
+
 /queryArtistTrack:
   description: artist and track info
   post:
     description: artist name and track to query
     body:
       application/json:
-        example: |
-          {
-           "artist": "Cher", 
-           "track": "believe"
-          }
+        schema: queryArtistTrackRequest
     responses:
       200:
         body:
@@ -34,11 +34,7 @@ version: 1.0
     description: calculate currency variation
     body:
       application/json:
-        example: |
-          {
-           "start-date": "2016-07-01", 
-           "end-date": "2016-07-21"
-          }
+        schema: valueVariationRequest
     responses:
       200:
         body:

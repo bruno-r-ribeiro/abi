@@ -20,103 +20,22 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
     </flow>
     
     <flow name="get:/popularMovie:test-config">
+        <flow-ref name="popularmovieFlow" doc:name="popularmovieFlow"/>
 
-        <http:request config-ref="HTTP_Request_Config_Movies_DB" path="movie/popular" method="GET" doc:name="HTTP">
-            <http:request-builder>
-                <http:query-param paramName="api_key" value="${themoviedb.access_key}"/>
-                <http:query-param paramName="page" value="1"/>
-
-
-            </http:request-builder>
-        </http:request>
-        <set-payload value="#[json:results]" mimeType="application/json" doc:name="Set Payload"/>
-        <dw:transform-message doc:name="Transform Message">
-            <dw:set-payload><![CDATA[%dw 1.0
-%output application/json
----
-payload map {
-	title: $.title,
-	original_language: $.original_language,
-	release_date: $.release_date,
-	poster_path: $.poster_path
-}]]></dw:set-payload>
-        </dw:transform-message>
-        <dw:transform-message doc:name="Transform Message">
-            <dw:set-payload><![CDATA[%dw 1.0
-%output application/json
----
-{
-	popularMovies: payload[0..9]
-}]]></dw:set-payload>
-        </dw:transform-message>
-        <logger message="== Response: #[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Response"/>
+        
         <exception-strategy ref="abitestCatch_Exception_Strategy" doc:name="Reference Exception Strategy"/>
     </flow>
     
     <flow name="post:/queryArtistTrack:test-config">
+        <flow-ref name="queryartisttrackFlow" doc:name="queryartisttrackFlow"/>
 
-        <choice doc:name="Choice">
-            <when expression="track != null" evaluator="json">
-                <http:request config-ref="HTTP_Request_Config_Last_FM" path="/" method="GET" doc:name="HTTP">
-                    <http:request-builder>
-                        <http:query-param paramName="method" value="track.getInfo"/>
-                        <http:query-param paramName="api_key" value="${lastfm.access_key}"/>
-                        <http:query-param paramName="artist" value="#[json:artist]"/>
-                        <http:query-param paramName="track" value="#[json:track]"/>
-                        <http:query-param paramName="format" value="json"/>
-                    </http:request-builder>
-                </http:request>
-            </when>
-            <otherwise>
-                <logger message="Track not informed" level="INFO" doc:name="Logger"/>
-                <http:request config-ref="HTTP_Request_Config_Last_FM" path="/" method="GET" doc:name="HTTP">
-                    <http:request-builder>
-                        <http:query-param paramName="method" value="artist.getinfo"/>
-                        <http:query-param paramName="artist" value="#[json:artist]"/>
-                        <http:query-param paramName="api_key" value="${lastfm.access_key}"/>
-                        <http:query-param paramName="format" value="json"/>
-                    </http:request-builder>
-                </http:request>
-            </otherwise>
-        </choice>
-        <logger message="== Response: #[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Response"/>
+        
         <exception-strategy ref="abitestCatch_Exception_Strategy" doc:name="Reference Exception Strategy"/>
     </flow>
     <flow name="post:/valueVariation:test-config">
+        <flow-ref name="valuevariationFlow" doc:name="valuevariationFlow"/>
 
-        <logger message="== Request: #[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Request"/>
-        <enricher source="#[json:quotes/USDEUR]" target="#[flowVars.startValue]" doc:name="Message Enricher">
-            <http:request config-ref="HTTP_Request_Config_Api_Layer" path="/historical" method="GET" doc:name="Get Start Variation">
-                <http:request-builder>
-                    <http:query-param paramName="access_key" value="${apilayer.access_key}"/>
-                    <http:query-param paramName="date" value="#[json:start-date]"/>
-                    <http:query-param paramName="source" value="${apilayer.currency.dollar}"/>
-                    <http:query-param paramName="format" value="1"/>
-                    <http:query-param paramName="currencies" value="${apilayer.currency.euro}"/>
-
-                </http:request-builder>
-            </http:request>
-        </enricher>
-        <enricher source="#[json:quotes/USDEUR]" target="#[flowVars.endValue]" doc:name="Message Enricher">
-            <http:request config-ref="HTTP_Request_Config_Api_Layer" path="/historical" method="GET" doc:name="Get End Variation">
-                <http:request-builder>
-                    <http:query-param paramName="access_key" value="${apilayer.access_key}"/>
-                    <http:query-param paramName="date" value="#[json:end-date]"/>
-                    <http:query-param paramName="source" value="${apilayer.currency.dollar}"/>
-                    <http:query-param paramName="format" value="1"/>
-                    <http:query-param paramName="currencies" value="${apilayer.currency.euro}"/>
-                </http:request-builder>
-            </http:request>
-        </enricher>
-        <dw:transform-message doc:name="Define Variation">
-            <dw:set-payload><![CDATA[%dw 1.0
-%output application/json
----
-{
-	"valueVariation":((flowVars.endValue - flowVars.startValue)*100)/flowVars.startValue
-}]]></dw:set-payload>
-        </dw:transform-message>
-        <logger message="== Response: #[message.payloadAs(java.lang.String)] == #[flowVars.startValue] =#= #[flowVars.endValue]" level="INFO" doc:name="Response"/>
+        
         <exception-strategy ref="abitestCatch_Exception_Strategy" doc:name="Reference Exception Strategy"/>
     </flow>
     

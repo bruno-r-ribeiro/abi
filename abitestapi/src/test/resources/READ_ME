@@ -1,0 +1,10 @@
+== List of operations and URLs ==
+
+- Top 10 popular movies:
+http://localhost:8081/api/popularMovies
+
+- Query artist and track details:
+http://localhost:8081/api/queryArtistTrack
+
+- Calculate value variation:
+http://localhost:8081/api/valueVariation
